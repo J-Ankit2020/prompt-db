@@ -20,7 +20,9 @@ const PromptCardList = ({ posts, handleTagClick }) => {
 
 const Feed = () => {
   const [searchText, setSearchText] = useState('');
+  const [timeout, setTimeout] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [searchResult, setSearchResult] = useState([]);
   useEffect(() => {
     const fetchPosts = async () => {
       const response = await fetch('/api/prompt');
@@ -29,12 +31,35 @@ const Feed = () => {
     };
     fetchPosts();
   }, []);
-  const handleSearch = (val) => {
-    setSearchText(val);
+
+  const filterPosts = (searchText) => {
     const filteredPosts = posts.filter((post) => {
-      return post.tag.includes(searchText) || post.prompt.includes(searchText);
+      const regex = new RegExp(searchText, 'i');
+      return (
+        regex.test(post.tag) ||
+        regex.test(post.prompt) ||
+        regex.test(post.creator.username)
+      );
     });
-    setPosts(filteredPosts);
+    return filteredPosts;
+  };
+
+  const handleSearch = (e) => {
+    clearTimeout(timeout);
+    setSearchText(e.target.value);
+    // debounce the search
+    setTimeout(
+      setTimeout(() => {
+        const filteredPosts = filterPosts(e.target.value);
+        setSearchResult(filteredPosts);
+      }, 500)
+    );
+  };
+
+  const handleTagClick = (tag) => {
+    setSearchText(tag);
+    const filteredPosts = filterPosts(tag);
+    setSearchResult(filteredPosts);
   };
   return (
     <section className='feed'>
@@ -43,16 +68,14 @@ const Feed = () => {
           type='text'
           placeholder='Search for a tag or a username'
           value={searchText}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={handleSearch}
           required
           className='search_input peer'
         />
       </form>
       <PromptCardList
-        posts={posts}
-        handleTagClick={(tag) => {
-          handleSearch(tag);
-        }}
+        posts={searchText === '' ? posts : searchResult}
+        handleTagClick={handleTagClick}
       />
     </section>
   );
